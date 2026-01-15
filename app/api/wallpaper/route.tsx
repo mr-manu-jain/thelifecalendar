@@ -1,6 +1,6 @@
-import { ImageResponse } from '@vercel/og';
+import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-import { getDaysInYear, getDayOfYear } from 'date-fns';
+import { getDaysInYear, getDayOfYear, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 
 export const runtime = 'edge';
@@ -12,48 +12,70 @@ export async function GET(request: NextRequest) {
     const width = parseInt(searchParams.get('width') || '1179', 10);
     const height = parseInt(searchParams.get('height') || '2556', 10);
 
-    // Parse color (default to black)
-    const color = searchParams.get('color') || '#000000';
+    // Parse color (default to red for the current day)
+    const activeColor = searchParams.get('color') || '#FF3B30'; // Apple-ish Red
 
-    // Parse timezone (default to UTC)
+    // Parse date or use current time
+    const dateParam = searchParams.get('date');
+    // Parse timezone (default to UTC), though if ISO is provided with offset, it handles itself mostly
     const tz = searchParams.get('tz') || 'UTC';
 
-    // Calculate dates
-    const now = new Date();
+    let targetDate: Date;
+
+    if (dateParam) {
+        try {
+            targetDate = parseISO(dateParam);
+        } catch (e) {
+            console.error('Invalid date param', e);
+            targetDate = new Date();
+        }
+    } else {
+        targetDate = new Date();
+    }
+
+    // If a timezone is strictly required for "Day of Year" calculation relative to a wall clock:
     let zonedDate: Date;
     try {
-        zonedDate = toZonedTime(now, tz);
+        // If the date string already has timezone info, toZonedTime might adjust it to the target TZ
+        zonedDate = toZonedTime(targetDate, tz);
     } catch (error) {
-        // Fallback if timezone is invalid
-        console.error('Invalid timezone:', tz, error);
-        zonedDate = now;
+        console.error('Timezone error:', error);
+        zonedDate = targetDate;
     }
 
     const daysTotal = getDaysInYear(zonedDate);
     const dayIndex = getDayOfYear(zonedDate); // 1-based index (1 to 365/366)
-    const percent = Math.round((dayIndex / daysTotal) * 100);
 
     // Generate dots array
     const dots = Array.from({ length: daysTotal }, (_, i) => {
-        const currentDay = i + 1;
-        return {
-            filled: currentDay <= dayIndex,
-        };
+        const currentDotDay = i + 1;
+        let color = '#333333'; // Future days (Dark Gray)
+
+        if (currentDotDay < dayIndex) {
+            color = '#ffffff'; // Past days (White)
+        } else if (currentDotDay === dayIndex) {
+            color = activeColor; // Current day (Red/Custom)
+        }
+
+        return { color };
     });
 
-    // Styles
-    // We want a grid that fits nicely. 
-    // For ~365 items, a square-ish grid or a rectangle grid ratio is needed.
-    // 1179 width. Let's aim for the dots to occupy central 80% width.
-    // Dot sizing calculation:
-    // sqrt(365) is approx 19. So 19 columns roughly.
-    // Let's settle on a comfortable gap and size relative to width.
-    const contentWidth = width * 0.8;
-    // Estimate column count based on width/height ratio? 
-    // Or just let flexbox wrap.
-    // Dot size:
-    const dotSize = Math.floor(contentWidth / 22); // ~22 dots per row max
-    const gap = Math.floor(dotSize * 0.4);
+    // Layout Calculations
+    // Aim for a grid that fits comfortably in the center vertical area
+    // iPhone lockscreen safe area is roughly top 20% and bottom 10-15%
+
+    const contentWidth = width * 0.85; // Use 85% of width
+
+    // Create a grid. 13 columns looks decent for ~365 dots (28 rows)
+    // or let flex wrap handle it naturally with a good size.
+    // 1179px width -> 85% = ~1000px.
+    // If we want ~13 columns: 1000 / 13 = ~76px per item (including gap).
+    // Let's try to infer a good size. 
+    // Let's stick to a fixed size that looks good on mobile.
+
+    const cols = 13;
+    const gap = Math.floor(contentWidth / (cols * 4)); // specific ratio for aesthetic
+    const dotSize = Math.floor((contentWidth - (gap * (cols - 1))) / cols);
 
     return new ImageResponse(
         (
@@ -62,31 +84,16 @@ export async function GET(request: NextRequest) {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'flex-start', // Top-aligned content but with padding
+                    justifyContent: 'center', // Center vertically in the safe area?
                     width: '100%',
                     height: '100%',
-                    backgroundColor: '#ffffff',
-                    paddingTop: height * 0.15, // 15% padding top
-                    paddingBottom: height * 0.15,
-                    paddingLeft: width * 0.1,
-                    paddingRight: width * 0.1,
-                    fontFamily: 'sans-serif',
+                    backgroundColor: '#000000', // Black background
+                    paddingTop: height * 0.22, // Space for Clock/Widgets
+                    paddingBottom: height * 0.15, // Space for dock/buttons
+                    paddingLeft: width * 0.075,
+                    paddingRight: width * 0.075,
                 }}
             >
-                {/* Year Progress Header */}
-                <div
-                    style={{
-                        display: 'flex',
-                        fontSize: width * 0.08,
-                        fontWeight: 900,
-                        color: color,
-                        marginBottom: height * 0.05,
-                    }}
-                >
-                    {percent}% Completed
-                </div>
-
-                {/* Dots Container */}
                 <div
                     style={{
                         display: 'flex',
@@ -95,6 +102,7 @@ export async function GET(request: NextRequest) {
                         alignContent: 'flex-start',
                         gap: gap,
                         width: '100%',
+                        // Limit the height if needed, or let it flow
                     }}
                 >
                     {dots.map((dot, index) => (
@@ -104,7 +112,7 @@ export async function GET(request: NextRequest) {
                                 width: dotSize,
                                 height: dotSize,
                                 borderRadius: '50%',
-                                backgroundColor: dot.filled ? color : '#e5e7eb',
+                                backgroundColor: dot.color,
                             }}
                         />
                     ))}
