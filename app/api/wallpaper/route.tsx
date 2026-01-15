@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
                     width: '100%',
                     height: '100%',
                     backgroundColor: '#000000', // Black background
-                    paddingTop: height * 0.15, // 15% padding top
+                    paddingTop: height * 0.36, // 15% padding top
                     paddingBottom: height * 0.15,
                     paddingLeft: width * 0.1,
                     paddingRight: width * 0.1,
