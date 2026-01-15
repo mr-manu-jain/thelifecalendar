@@ -88,10 +88,11 @@ export async function GET(request: NextRequest) {
                     width: '100%',
                     height: '100%',
                     backgroundColor: '#000000', // Black background
-                    paddingTop: height * 0.22, // Space for Clock/Widgets
-                    paddingBottom: height * 0.15, // Space for dock/buttons
-                    paddingLeft: width * 0.075,
-                    paddingRight: width * 0.075,
+                    padding: '220px 40px 100px 40px'
+                    // paddingTop: height * 0.35, // Space for Clock/Widgets
+                    // paddingBottom: height * 0.25, // Space for dock/buttons
+                    // paddingLeft: width * 0.075,
+                    // paddingRight: width * 0.075,
                 }}
             >
                 <div
