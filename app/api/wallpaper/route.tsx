@@ -61,21 +61,10 @@ export async function GET(request: NextRequest) {
     });
 
     // Layout Calculations
-    // Aim for a grid that fits comfortably in the center vertical area
-    // iPhone lockscreen safe area is roughly top 20% and bottom 10-15%
-
-    const contentWidth = width * 0.85; // Use 85% of width
-
-    // Create a grid. 13 columns looks decent for ~365 dots (28 rows)
-    // or let flex wrap handle it naturally with a good size.
-    // 1179px width -> 85% = ~1000px.
-    // If we want ~13 columns: 1000 / 13 = ~76px per item (including gap).
-    // Let's try to infer a good size. 
-    // Let's stick to a fixed size that looks good on mobile.
-
-    const cols = 13;
-    const gap = Math.floor(contentWidth / (cols * 4)); // specific ratio for aesthetic
-    const dotSize = Math.floor((contentWidth - (gap * (cols - 1))) / cols);
+    // Reverting to original "Life Calendar" style spacing
+    const contentWidth = width * 0.8;
+    const dotSize = Math.floor(contentWidth / 22); // ~22 dots per row max
+    const gap = Math.floor(dotSize * 0.4);
 
     return new ImageResponse(
         (
@@ -84,15 +73,14 @@ export async function GET(request: NextRequest) {
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center', // Center vertically in the safe area?
+                    justifyContent: 'flex-start', // Top-aligned content
                     width: '100%',
                     height: '100%',
                     backgroundColor: '#000000', // Black background
-                    padding: '220px 40px 100px 40px'
-                    // paddingTop: height * 0.35, // Space for Clock/Widgets
-                    // paddingBottom: height * 0.25, // Space for dock/buttons
-                    // paddingLeft: width * 0.075,
-                    // paddingRight: width * 0.075,
+                    paddingTop: height * 0.15, // 15% padding top
+                    paddingBottom: height * 0.15,
+                    paddingLeft: width * 0.1,
+                    paddingRight: width * 0.1,
                 }}
             >
                 <div
@@ -103,7 +91,6 @@ export async function GET(request: NextRequest) {
                         alignContent: 'flex-start',
                         gap: gap,
                         width: '100%',
-                        // Limit the height if needed, or let it flow
                     }}
                 >
                     {dots.map((dot, index) => (
